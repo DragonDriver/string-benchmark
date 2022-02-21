@@ -32,3 +32,6 @@
 *.app
 
 .vscode
+
+clickhouse/clickhouse-cpp
+clickhouse/clickhouse-cpp-build
