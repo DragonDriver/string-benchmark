@@ -1,8 +1,9 @@
-#include "../Timer.h"
-#include "../common.h"
-#include <string.h>
 #include <stdio.h>
-#include <clickhouse/client.h>
+#include <string.h>
+
+#include "Timer.h"
+#include "clickhouse/client.h"
+#include "common.h"
 
 using namespace clickhouse;
 
@@ -19,24 +20,24 @@ void insert(Client& client, const Block& block,
   client.Insert(table, block);
 }
 
-void
-prefix_search(Client& client, const std::string& sql) {
-	client.Select(sql);
+void prefix_search(Client& client, const std::string& sql) {
+  client.Select(sql);
 }
 
 void prefix_search(Client& client, const std::string& sql, SelectCallback cb) {
-	client.Select(sql, cb);
+  client.Select(sql, cb);
 }
 
-void drop(Client& client,
-          const std::string& table = "tutorial.strbench") {
+void drop(Client& client, const std::string& table = "tutorial.strbench") {
   client.Execute(std::string("drop table ") + table);
 }
 
 int main(int argc, char* argv[]) {
+  std::string num_rows = "100";
   std::string file = F;
   if (argc > 1) {
     replace(file, "100", argv[1]);
+    replace(num_rows, "100", argv[1]);
   }
   if (argc > 2) {
     replace(file, "wiki", argv[2]);
@@ -55,13 +56,15 @@ int main(int argc, char* argv[]) {
   Client client(opts);
   tr.RecordSection("create connection");
 
-  auto lines = read_file();
+  auto lines = read_file(file.c_str());
   tr.RecordSection("read file");
 
   /// Create a table.
-  client.Execute(
+  const char* ddl =
       "CREATE TABLE IF NOT EXISTS tutorial.strbench (str String) ENGINE = "
-      "Memory");
+      "Memory";
+  std::cout << ddl << std::endl;
+  client.Execute(ddl);
   tr.RecordSection("create table");
 
   Block block;
@@ -71,26 +74,30 @@ int main(int argc, char* argv[]) {
   insert(client, block, "tutorial.strbench");
   tr.RecordSection("insert");
 
-	for (int i = 0; i < ql; i++) {
-		char* sql;
-		sprintf(sql, "select startsWith(%s, %s) from %s", "str", qs[i], "tutorial.strbench");
-		prefix_search(client, std::string(sql));
-	}
-	tr.RecordSection("prefix search");
+  auto sql = new char[1000];
+  for (unsigned int i = 0; i < ql; i++) {
+    sprintf(sql, "select startsWith(%s, '%s') from %s limit %d", "str", qs[i],
+            "tutorial.strbench", std::atoi(num_rows.c_str()) * 10000);
+    std::cout << sql << std::endl;
+    prefix_search(client, std::string(sql));
+  }
+  delete[] sql;
+  tr.RecordSection("prefix search");
 
-	for (int i = 0; i < ql; i++) {
-		char* sql;
-		sprintf(sql, "select startsWith(%s, %s) from %s", "str", qs[i], "tutorial.strbench");
-		prefix_search(client, std::string(sql), [](const Block& block) {
-			for (size_t i = 0; i < block.GetRowCount(); ++i) {
-            std::cout << block[0]->As<ColumnUInt8>()->At(i) << std::endl;
-        }
-		});
-	}
-	tr.RecordSection("prefix search cb");
+  // for (unsigned int i = 0; i < ql; i++) {
+  //   char* sql;
+  //   sprintf(sql, "select startsWith(%s, %s) from %s", "str", qs[i],
+  //           "tutorial.strbench");
+  //   prefix_search(client, std::string(sql), [](const Block& block) {
+  //     for (size_t i = 0; i < block.GetRowCount(); ++i) {
+  //       std::cout << block[0]->As<ColumnUInt8>()->At(i) << std::endl;
+  //     }
+  //   });
+  // }
+  // tr.RecordSection("prefix search cb");
 
-	drop(client, "tutorial.strbench");
-	tr.RecordSection("drop table");
+  // drop(client, "tutorial.strbench");
+  tr.RecordSection("drop table");
 
   return 0;
 }
