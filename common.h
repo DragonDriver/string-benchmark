@@ -27,3 +27,16 @@ std::vector<std::string> read_file(const char* file = F) {
   }
   return ret;
 }
+
+static inline bool prefix_match(const std::string& str,
+                                const std::string& prefix) {
+  if (prefix.length() > str.length()) {
+    return false;
+  }
+  for (int i = 0; i < prefix.length(); i++) {
+    if (prefix[i] != str[i]) {
+      return false;
+    }
+  }
+  return true;
+}
