@@ -81,20 +81,19 @@ int main(int argc, char* argv[]) {
     std::cout << sql << std::endl;
     prefix_search(client, std::string(sql));
   }
-  delete[] sql;
   tr.RecordSection("prefix search");
 
-  // for (unsigned int i = 0; i < ql; i++) {
-  //   char* sql;
-  //   sprintf(sql, "select startsWith(%s, %s) from %s", "str", qs[i],
-  //           "tutorial.strbench");
-  //   prefix_search(client, std::string(sql), [](const Block& block) {
-  //     for (size_t i = 0; i < block.GetRowCount(); ++i) {
-  //       std::cout << block[0]->As<ColumnUInt8>()->At(i) << std::endl;
-  //     }
-  //   });
-  // }
-  // tr.RecordSection("prefix search cb");
+  for (unsigned int i = 0; i < ql; i++) {
+    sprintf(sql, "select %s from %s where startsWith(%s, '%s')", "str",
+            "tutorial.strbench", "str", qs[i]);
+    prefix_search(client, std::string(sql), [](const Block& block) {
+      for (size_t i = 0; i < block.GetRowCount(); ++i) {
+        std::cout << block[0]->As<ColumnString>()->At(i) << std::endl;
+      }
+    });
+  }
+  delete[] sql;
+  tr.RecordSection("prefix search cb");
 
   // drop(client, "tutorial.strbench");
   tr.RecordSection("drop table");
